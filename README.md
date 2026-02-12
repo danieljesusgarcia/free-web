@@ -2,6 +2,13 @@
 
 A vibrant, modern website for youth-focused products and services featuring blog posts and newsletter functionality.
 
+## 📚 Documentation
+
+This project includes comprehensive documentation:
+- **[ANTIGRAVITY.md](ANTIGRAVITY.md)**: Overview of AI-assisted development process
+- **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Technical planning and architecture
+- **[WALKTHROUGH.md](WALKTHROUGH.md)**: Complete development walkthrough with testing results
+
 ## Features
 
 - 🎨 **Modern Design**: Vibrant gradients, glassmorphism effects, smooth animations
@@ -141,6 +148,11 @@ For production deployment:
 
 MIT
 
-## Author
+## Built with Antigravity
 
-Created with ✨ by Antigravity
+This project was developed with assistance from **Antigravity**, Google DeepMind's advanced agentic AI coding assistant. See [ANTIGRAVITY.md](ANTIGRAVITY.md) for details about the development process and comprehensive documentation.
+
+---
+
+✨ **Powered by Antigravity** - Advanced Agentic AI Coding Assistant
+
