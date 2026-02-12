@@ -67,12 +67,11 @@ document.querySelectorAll('.fade-in').forEach(element => {
     observer.observe(element);
 });
 
-// Newsletter form submission with enhanced functionality
+// Newsletter form submission with API integration
 const newsletterForm = document.getElementById('newsletterForm');
 const emailInput = document.getElementById('emailInput');
 
 function showAlreadySubscribedMessage() {
-    // Create already subscribed message with better visibility
     const msg = document.createElement('div');
     msg.style.cssText = `
         position: fixed;
@@ -102,83 +101,130 @@ function showAlreadySubscribedMessage() {
 }
 
 function showSuccessMessage(email) {
-    // Create success message element
     const successMsg = document.createElement('div');
     successMsg.style.cssText = `
-    position: fixed;
-    top: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--gradient-primary);
-    color: white;
-    padding: 1.5rem 2rem;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-glow);
-    z-index: 10000;
-    animation: slideDown 0.5s ease;
-    text-align: center;
-    max-width: 90%;
-  `;
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--gradient-primary);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-glow);
+        z-index: 10000;
+        animation: slideDown 0.5s ease;
+        text-align: center;
+        max-width: 90%;
+    `;
     successMsg.innerHTML = `
-    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎉</div>
-    <div style="font-weight: 600; font-size: 1.125rem; margin-bottom: 0.25rem;">Welcome to the Squad!</div>
-    <div style="font-size: 0.875rem; opacity: 0.9;">We'll send awesome content to ${email}</div>
-  `;
-
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎉</div>
+        <div style="font-weight: 600; font-size: 1.125rem; margin-bottom: 0.25rem;">Welcome to the Squad!</div>
+        <div style="font-size: 0.875rem; opacity: 0.9;">We'll send awesome content to ${email}</div>
+    `;
     document.body.appendChild(successMsg);
-
-    // Remove message after 4 seconds
     setTimeout(() => {
         successMsg.style.animation = 'slideUp 0.5s ease';
         setTimeout(() => successMsg.remove(), 500);
     }, 4000);
 }
 
+function showErrorMessage(message) {
+    const errorMsg = document.createElement('div');
+    errorMsg.style.cssText = `
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 0 40px rgba(239, 68, 68, 0.3);
+        z-index: 10000;
+        animation: slideDown 0.5s ease;
+        text-align: center;
+        max-width: 90%;
+    `;
+    errorMsg.innerHTML = `
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+        <div style="font-weight: 600; font-size: 1.125rem;">${message}</div>
+    `;
+    document.body.appendChild(errorMsg);
+    setTimeout(() => {
+        errorMsg.style.animation = 'slideUp 0.5s ease';
+        setTimeout(() => errorMsg.remove(), 500);
+    }, 3000);
+}
+
 if (newsletterForm) {
-    newsletterForm.addEventListener('submit', (e) => {
+    newsletterForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const email = emailInput.value.trim();
 
-        if (!email) return;
-
-        // Get existing subscribers from localStorage
-        const subscribers = JSON.parse(localStorage.getItem('newsletterSubscribers') || '[]');
-
-        // Check if email already exists
-        const alreadySubscribed = subscribers.some(sub => sub.email === email);
-
-        if (alreadySubscribed) {
-            // Show already subscribed message
-            showAlreadySubscribedMessage();
+        if (!email) {
+            showErrorMessage('Please enter your email address');
             return;
         }
 
-        // Add new subscriber
-        subscribers.push({
-            email: email,
-            subscribedAt: new Date().toISOString()
-        });
+        // Basic email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showErrorMessage('Please enter a valid email address');
+            return;
+        }
 
-        // Save to localStorage
-        localStorage.setItem('newsletterSubscribers', JSON.stringify(subscribers));
-
-        // Show success message
-        showSuccessMessage(email);
-
-        // Clear the input field
-        emailInput.value = '';
-
-        // Temporarily show success on button
+        // Disable button during submission
         const submitBtn = newsletterForm.querySelector('button[type="submit"]');
         const originalText = submitBtn.textContent;
-        submitBtn.textContent = '✓ Subscribed!';
-        submitBtn.style.background = 'var(--gradient-secondary)';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Subscribing...';
 
-        setTimeout(() => {
+        try {
+            // Make API request to backend
+            const response = await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Success (201)
+                showSuccessMessage(email);
+                emailInput.value = '';
+
+                // Temporarily show success on button
+                submitBtn.textContent = '✓ Subscribed!';
+                submitBtn.style.background = 'var(--gradient-secondary)';
+
+                setTimeout(() => {
+                    submitBtn.textContent = originalText;
+                    submitBtn.style.background = '';
+                    submitBtn.disabled = false;
+                }, 3000);
+            } else if (response.status === 409) {
+                // Duplicate email (409)
+                showAlreadySubscribedMessage();
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            } else {
+                // Other error (400, 500, etc.)
+                showErrorMessage(data.message || 'Failed to subscribe. Please try again.');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        } catch (error) {
+            // Network error or server not running
+            console.error('Subscription error:', error);
+            showErrorMessage('Unable to connect to server. Please make sure the server is running.');
             submitBtn.textContent = originalText;
-            submitBtn.style.background = '';
-        }, 3000);
+            submitBtn.disabled = false;
+        }
     });
 }
 
@@ -189,7 +235,6 @@ productCards.forEach(card => {
     card.addEventListener('click', () => {
         const productTitle = card.querySelector('.product-title').textContent;
         console.log(`Clicked on: ${productTitle}`);
-        // Here you could add functionality to open a product detail modal or navigate to a product page
     });
 });
 
@@ -202,7 +247,6 @@ blogCards.forEach(card => {
         if (!e.target.classList.contains('blog-link')) {
             const blogTitle = card.querySelector('.blog-title').textContent;
             console.log(`Clicked on blog: ${blogTitle}`);
-            // Here you could add functionality to open the full blog post
         }
     });
 });
